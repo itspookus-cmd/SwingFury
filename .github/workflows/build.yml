@@ -1,0 +1,38 @@
+name: Build SwingFury
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+
+      - name: Update package repos
+        run: xmake repo -u
+
+      - name: Configure
+        run: xmake f -y -m releasedbg
+
+      - name: Build
+        run: xmake build -y -v
+
+      - name: Stage mod files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path stage/SKSE/Plugins | Out-Null
+          $dll = Get-ChildItem -Path build -Recurse -Filter SwingFury.dll | Select-Object -First 1
+          if (-not $dll) { throw "SwingFury.dll was not produced" }
+          Copy-Item $dll.FullName stage/SKSE/Plugins/
+          Copy-Item config/SwingFury.ini stage/SKSE/Plugins/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SwingFury-mod
+          path: stage/
