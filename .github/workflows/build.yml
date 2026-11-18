@@ -8,31 +8,49 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out source
+        uses: actions/checkout@v4
 
-      - uses: xmake-io/github-action-setup-xmake@v1
+      - name: Set up XMake
+        uses: xmake-io/github-action-setup-xmake@v1
         with:
           xmake-version: latest
 
-      - name: Update package repos
-        run: xmake repo -u
+      - name: Update package repositories
+        run: xmake repo --update
 
       - name: Configure
-        run: xmake f -y -m releasedbg
+        run: xmake f -y -m releasedbg -a x64
 
       - name: Build
-        run: xmake build -y -v
+        run: xmake build -y -v SwingFury
 
       - name: Stage mod files
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path stage/SKSE/Plugins | Out-Null
-          $dll = Get-ChildItem -Path build -Recurse -Filter SwingFury.dll | Select-Object -First 1
-          if (-not $dll) { throw "SwingFury.dll was not produced" }
-          Copy-Item $dll.FullName stage/SKSE/Plugins/
-          Copy-Item config/SwingFury.ini stage/SKSE/Plugins/
+          $ErrorActionPreference = "Stop"
+          $pluginDir = Join-Path $PWD "stage/SKSE/Plugins"
+          New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
 
-      - uses: actions/upload-artifact@v4
+          $dll = Get-ChildItem -Path build -Recurse -File -Filter "SwingFury.dll" |
+            Select-Object -First 1
+
+          if (-not $dll) {
+            throw "SwingFury.dll was not produced. Inspect the Build step."
+          }
+
+          Copy-Item -LiteralPath $dll.FullName -Destination $pluginDir
+          Copy-Item -LiteralPath "config/SwingFury.ini" -Destination $pluginDir
+
+          @"
+          SwingFury 0.1.0
+          Initial milestone: SKSE load and logging only.
+          No attack-speed changes are implemented yet.
+          "@ | Set-Content -Path "stage/README.txt" -Encoding utf8
+
+      - name: Upload installable artifact
+        uses: actions/upload-artifact@v4
         with:
           name: SwingFury-mod
           path: stage/
+          if-no-files-found: error
