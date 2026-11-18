@@ -1,6 +1,8 @@
 #include "pch.h"
 
-SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
+// CommonLibSSE-NG exports the correctly named SKSEPlugin_Load entry point
+// through this macro. The spelling is case-sensitive.
+SKSEPluginLoad(const SKSE::LoadInterface* a_skse)
 {
     SKSE::Init(a_skse);
 
